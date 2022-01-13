@@ -622,7 +622,7 @@ hld_bos_long %>%
 
 ```{r Bosted_Sunnhordland_1}
 sun_bos %>% 
-  ggplot(mapping = aes(x = År, y = `Alle Næringer`)) +
+  ggplot(mapping = aes(x = År, y = Totalt)) +
   geom_line() +
   labs(title = "Sunnhordaland", x = "År", y = "Antall ansatte i  \n alle næringer") +
   theme(axis.title.y = element_text(angle=0))+ 

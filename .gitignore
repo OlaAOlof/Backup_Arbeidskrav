@@ -5,6 +5,7 @@
 .md
 .nb.html
 .pdf
+.csv
 
 # Session Data files
 .RData
