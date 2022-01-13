@@ -399,11 +399,13 @@ Den første regionen vi velger å se på i denne sammenhengen er Haugalandet.
 hld_bos %>% 
   ggplot(mapping = aes(x = År, y = Totalt)) +
   geom_line() +
-  labs(title = "Haugalandet")+
+  labs(title = "Fig. 17 Haugalandet") +
   ylab("Antall ansatte i  \n alle næringer") +
   theme(axis.title.y = element_text(angle=0))+
   scale_x_continuous(breaks = seq(2008, 2020, by = 1))
 ```
+
+Vi ser allerede ut ifra figur 17 to faktorer. Det ene er at antall bosatte på Haugalandet som jobber innenfor næringene er høyere enn antal personer som jobber i regionen. Dette tyder på at det er en god del pendling til og fra regionen.
 
 ```{r Bosted_Haugalandet_2}
 syssel_bos %>% 

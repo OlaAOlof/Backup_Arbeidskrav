@@ -193,7 +193,7 @@ hld_arb <- hld_arb %>%
 ```{r}
 hld_arb <- hld_arb %>% 
   mutate(
-    Totalt = `1106_Haugesund` + `1135_Sauda` + `1145_Bokn` + `1146_Tysvær` + `1149_Karmøy` + `1160_Vindafjord`) %>% 
+    Totalt = `1106_Haugesund` + `1135_Sauda` + `1145_Bokn` + `1146_Tysvær` + `1149_Karmøy` + `1151_Utsira` + `1160_Vindafjord`) %>% 
   select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
 ```
 
