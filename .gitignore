@@ -1,6 +1,11 @@
 # History files
 .Rhistory
 .Rapp.history
+*.Rproj
+*.md
+*.nb.html
+*.pdf
+*.csv
 
 # Session Data files
 .RData
@@ -37,8 +42,8 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
-.Rproj
-.md
-.nb.html
-.pdf
-.csv
+*.Rproj
+*.md
+*.nb.html
+*.pdf
+*.csv
