@@ -774,6 +774,34 @@ LQindustri <- syssel_bos %>%
   mutate(
   andel = Eir_Er_industri/Ein_En_Industri
   )
+# Disse må fikses på tilsvarende vis. Har feil verdier slik de er nå 
+
+# LQjordbruk <- as_tibble(syssel_bos$Eir_Er_Jordbruk/nasjonalt_bosted$Ein_En_Jordbruk)
+
+LQjordbruk <- syssel_bos %>% 
+  select(aar, knavn, Eir_Er_Jordbruk) %>% 
+  mutate(aar = as.character(aar)) %>% 
+  left_join(select(.data = nasjonalt_bosted, aar, Ein_En_Jordbruk), by = c("aar")) %>% 
+  mutate(andel = Eir_Er_Jordbruk/Ein_En_Jordbruk)
+
+# LQundervisning <- as_tibble(syssel_bos$Eir_Er_Undervisning/nasjonalt_bosted$Ein_En_Undervisning)
+
+LQundervisning <- syssel_bos %>% 
+  select(aar, knavn, Eir_Er_Undervisning) %>% 
+  mutate(aar = as.character(aar)) %>% 
+  left_join(select(.data = nasjonalt_bosted, aar, Ein_En_Undervisning), by = c("aar")) %>% 
+  mutate(andel = Eir_Er_Undervisning/Ein_En_Undervisning)
+
+# LQhelse <- as_tibble(syssel_bos$Eir_Er_Helse/nasjonalt_bosted$Ein_En_Helse)
+
+LQhelse <- syssel_bos %>% 
+  select(aar, knavn, Eir_Er_Helse) %>% 
+  mutate(aar = as.character(aar)) %>% 
+  left_join(select(.data = nasjonalt_bosted, aar, Ein_En_Helse), by = c("aar")) %>% 
+  mutate(andel = Eir_Er_Helse/Ein_En_Helse)
+# LQjordbruk <- as_tibble(syssel_bos$Eir_Er_Jordbruk/nasjonalt_bosted$Ein_En_Jordbruk)
+# LQundervisning <- as_tibble(syssel_bos$Eir_Er_Undervisning/nasjonalt_bosted$Ein_En_Undervisning)
+# LQhelse <- as_tibble(syssel_bos$Eir_Er_Helse/nasjonalt_bosted$Ein_En_Helse)
 ```
 
 
