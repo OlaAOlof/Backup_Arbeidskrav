@@ -399,13 +399,15 @@ Den første regionen vi velger å se på i denne sammenhengen er Haugalandet.
 hld_bos %>% 
   ggplot(mapping = aes(x = År, y = Totalt)) +
   geom_line() +
-  labs(title = "Fig. 17 Haugalandet") +
+  labs(title = "Fig. 17: Haugalandet") +
   ylab("Antall ansatte i  \n alle næringer") +
   theme(axis.title.y = element_text(angle=0))+
   scale_x_continuous(breaks = seq(2008, 2020, by = 1))
 ```
 
-Vi ser allerede ut ifra figur 17 to faktorer. Det ene er at antall bosatte på Haugalandet som jobber innenfor næringene er høyere enn antal personer som jobber i regionen. Dette tyder på at det er en god del pendling til og fra regionen.
+Vi ser allerede ut ifra figur 17 to faktorer. Det ene er at antall bosatte på Haugalandet som jobber innenfor næringene er høyere enn antall personer som jobber i regionen. Dette tyder på at det er en god del pendling til og fra regionen. Det andre vi kan se ut ifra figur 17 er at Haugalandet totalt sett hadde en vekst fra 2009 frem til 2014, og opplevd vekste fra 2016 til 2019, og ser ut til å gå gjennom en ny reduksjon frem mot i dag. 
+
+For å få et bedre overblitt hvordan utviklingen er på et kommunalt nivå så ser vi på figur 18.
 
 ```{r Bosted_Haugalandet_2}
 syssel_bos %>% 
@@ -415,10 +417,12 @@ syssel_bos %>%
   geom_line(aes(group = knavn, colour = knavn)) +
   scale_size_manual(values = c(seq(2.0, 2, by = -0.1))) +
   geom_hline(yintercept = 0) +
-  labs(title = "Haugalandet", x = "År", y = "Antall ansatte i  \n alle næringer") +
+  labs(title = "Fig. 18: Haugalandet", x = "År", y = "Antall ansatte i  \n alle næringer") +
   theme(axis.title.y = element_text(angle=0))+
   theme(legend.position = 'bottom')
 ```
+
+Figur 18 viser her totale utviklingen på kommunalt nivå i Haugalandsregionen. Vi ser desverre her at på grunn av at Haugesund og Karmøy er såpass store og dominante at det blir uoversiktlig å få med seg utviklingen til dei mindre kommunane. Figur 18 gjer oss ein god oversikt over regionen, men vi velger dermed sjå videre på figur 19 og 20 som gjer ein mykje bedre oversikt over utviklinga på kommunalt nivå.
 
 ```{r hld_bos_long}
 hld_bos_long <- syssel_bos %>%
@@ -434,7 +438,7 @@ hld_bos_long %>%
   filter(Næring %in% "Alle Næringer") %>% 
   ggplot(mapping = aes(x = as.Date(paste0(aar, "-01-01")), y = Ansatte)) +
   scale_color_viridis(discrete = TRUE, option = "A") +
-  labs(title = "Fig. x: Haugalandet: Haugesund, Karmøy og Vindafjord", x = "År", y = "Antall ansatte") +
+  labs(title = "Fig. 19: Haugalandet: Haugesund, Karmøy og Vindafjord", x = "År", y = "Antall ansatte") +
   geom_line(mapping = aes(group = Næring, colour = Næring)) +
   facet_wrap(facets = ~ knavn, scales = "free_y", ncol = 3) +
   theme(legend.position = 'bottom')
@@ -446,11 +450,13 @@ hld_bos_long %>%
   filter(Næring %in% "Alle Næringer") %>% 
   ggplot(mapping = aes(x = as.Date(paste0(aar, "-01-01")), y = Ansatte)) +
   scale_color_viridis(discrete = TRUE, option = "A") +
-  labs(title = "Fig. x: Haugalandet: Bokn, Sauda Tysvær og Utsira", x = "År", y = "Antall ansatte") +
+  labs(title = "Fig. 20: Haugalandet: Bokn, Sauda Tysvær og Utsira", x = "År", y = "Antall ansatte") +
   geom_line(mapping = aes(group = Næring, colour = Næring)) +
   facet_wrap(facets = ~ knavn, scales = "free_y", ncol = 2) +
   theme(legend.position = 'bottom')
 ```
+
+Vi ser nå utviklinga til kommunane i regionen mye tydeligere, og vi kan med en gang se at flere av kommunene har sett en jevn reduksjon totalt sett. Litt interessant å bemerke at de eneste to kommunene som har sett jevn vekst siden 2008 er Bokn og Tysvær. Karmøy såg en kraftig vekst fra 2010 til 2014, men har etter dette sett en kraftig reduksjon. Å se på totale utviklingen i regionen gir oss ikke nødvendigvis all nødvendig informasjon, så vi velger å filtrere videre ned til de 6 mest relevante næringene i regionen på kommune nivå.
 
 ```{r Næringsfordeling_og_Utvikling_Haugelandet_3_Største_Bosted}
 hld_bos_long %>% 
@@ -458,7 +464,7 @@ hld_bos_long %>%
   filter(Næring %in% c("Industri", "Helse- og Sosialtjenester", "Finansiering og Forsikring", "Elektrisitet, Vann og Renovasjon", "Bygge- og Anleggsvirksomhet", "Jordbruk, Skogbrug og Fiske")) %>% 
   ggplot(mapping = aes(x = as.Date(paste0(aar, "-01-01")), y = Ansatte)) +
   scale_fill_distiller(palette = "Dark2") +
-  labs(title = "Haugalandet: Haugesund, Karmøy og Vindafjord", x = "År", y = "Antall ansatte") +
+  labs(title = "Fig 21: Haugalandet: Haugesund, Karmøy og Vindafjord", x = "År", y = "Antall ansatte") +
   geom_line(mapping = aes(group = Næring, colour = Næring)) +
   facet_wrap(facets = ~ knavn, scales = "free_y", ncol = 3) +
   theme(legend.position = 'bottom')
@@ -470,11 +476,13 @@ hld_bos_long %>%
   filter(Næring %in% c("Industri", "Helse- og Sosialtjenester", "Finansiering og Forsikring", "Elektrisitet, Vann og Renovasjon", "Bygge- og Anleggsvirksomhet", "Jordbruk, Skogbrug og Fiske")) %>% 
   ggplot(mapping = aes(x = as.Date(paste0(aar, "-01-01")), y = Ansatte)) +
   scale_fill_distiller(palette = "Dark2") +
-  labs(title = "Haugalandet: Bokn, Sauda, Tysvær og Utsira", x = "År", y = "Antall ansatte") +
+  labs(title = "Fig 22: Haugalandet: Bokn, Sauda, Tysvær og Utsira", x = "År", y = "Antall ansatte") +
   geom_line(mapping = aes(group = Næring, colour = Næring)) +
   facet_wrap(facets = ~ knavn, scales = "free_y", ncol = 2) +
   theme(legend.position = 'bottom')
 ```
+
+Figurene 21 og 22 gir oss en oversikt over utviklingen i regionen på kommunalt nivå, men nå med hensyn på de 6 mest relevante næringene. Vi ser ut ifra figurene at alle kommunene i regionen har en ting til felles, og det er en reduksjon i industrien og vekste i helse- og sosialetjenester. Eneste kommunen som skiller seg litt ut her, er Bokn som har sett en svak vekst i industri siste 4 årene.
 
 ## Sunnhordland
 
