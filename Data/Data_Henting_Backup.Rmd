@@ -193,7 +193,7 @@ hld_arb <- hld_arb %>%
 ```{r}
 hld_arb <- hld_arb %>% 
   mutate(
-    Totalt = `1106_Haugesund` + `1135_Sauda` + `1145_Bokn` + `1146_Tysvær` + `1149_Karmøy` + `1160_Vindafjord`) %>% 
+    Totalt = `1106_Haugesund` + `1135_Sauda` + `1145_Bokn` + `1146_Tysvær` + `1149_Karmøy` + `1151_Utsira` + `1160_Vindafjord`) %>% 
   select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
 ```
 
@@ -961,8 +961,10 @@ write_csv(hld_bos, file="hld_bos.csv")
 write_csv(sun_bos, file="sun_bos.csv")
 write_csv(har_bos, file="har_bos.csv")
 #oppgave 2
-write_csv(hld_bos_LQ, file="hld_bos_LQ.csv")
+
 #oppgave 3
+write_csv(hld_bos_LQ, file="hld_bos_LQ.csv")
+write_csv(sun_bos_LQ, file= "sun_bos_LQ.csv")
 #oppgave 4
 write_csv(Pendling, file = "Pendling.csv")
 write_csv(hgl_Pendling, file = "hgl_Pendling.csv")
