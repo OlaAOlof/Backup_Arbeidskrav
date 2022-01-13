@@ -961,8 +961,10 @@ write_csv(hld_bos, file="hld_bos.csv")
 write_csv(sun_bos, file="sun_bos.csv")
 write_csv(har_bos, file="har_bos.csv")
 #oppgave 2
-write_csv(hld_bos_LQ, file="hld_bos_LQ.csv")
+
 #oppgave 3
+write_csv(hld_bos_LQ, file="hld_bos_LQ.csv")
+write_csv(sun_bos_LQ, file= "sun_bos_LQ.csv")
 #oppgave 4
 write_csv(Pendling, file = "Pendling.csv")
 write_csv(hgl_Pendling, file = "hgl_Pendling.csv")
