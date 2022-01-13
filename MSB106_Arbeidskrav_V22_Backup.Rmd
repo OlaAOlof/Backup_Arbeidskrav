@@ -774,6 +774,8 @@ LQindustri <- syssel_bos %>%
   mutate(
   andel = Eir_Er_industri/Ein_En_Industri
   )
+```
+
 
 ```{r}
 syssel_bos <- syssel_bos %>% 
