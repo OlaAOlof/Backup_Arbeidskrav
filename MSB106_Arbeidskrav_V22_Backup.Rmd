@@ -86,7 +86,7 @@ hgl_Pendling <- read_csv("Data/hgl_Pendling.csv", show_col_types = FALSE)
 sun_Pendling <- read_csv("Data/sun_Pendling.csv", show_col_types = FALSE)
 hld_bos_LQ <- read_csv("Data/hld_bos_LQ.csv", show_col_types = FALSE)
 sun_bos_LQ <- read_csv("Data/sun_bos_LQ.csv", show_col_types = FALSE)
-har_bos_LQ <- read_csv("Data/hld_bos_LQ.csv", show_col_types = FALSE)
+har_bos_LQ <- read_csv("Data/har_bos_LQ.csv", show_col_types = FALSE)
 ```
 
 # 1 Sysselsetting i ulike næringer, etter arbeidssted

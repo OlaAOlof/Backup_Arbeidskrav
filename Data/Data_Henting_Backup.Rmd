@@ -849,8 +849,28 @@ names(har_bos)[[5]] <- "År"
 
 ```{r}
 har_bos <- har_bos %>% 
+  filter(Næringer == 'Alle Næringer')
+```
+
+```{r}
+names(har_bos)[[6]] <- "Odda"
+```
+
+```{r}
+har_bos <- har_bos %>% 
+  mutate(
+    Totalt = Odda + Ullensvang)
+```
+
+```{r}
+har_bos <- har_bos %>% 
   pivot_wider(names_from = Næringer,
               values_from = Totalt)
+```
+
+```{r}
+har_bos <- har_bos %>% 
+  select(-Odda, -Ullensvang)
 ```
 
 
@@ -1011,3 +1031,5 @@ write_csv(Pendling, file = "Pendling.csv")
 write_csv(hgl_Pendling, file = "hgl_Pendling.csv")
 write_csv(sun_Pendling, file = "sun_Pendling.csv")
 ```
+
+-
