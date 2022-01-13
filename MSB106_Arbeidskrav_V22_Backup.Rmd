@@ -675,8 +675,69 @@ har_bos_LQ <- har_bos_LQ %>%
 
 NÅ MÅ VI HA NASJONALT DATASETT FOR Å DELE VERIDENE PÅ NASJONAL SYSSELSETTING OG FÅ LOKALISERINGSKVOTIENTEN
 
+```{r}
+syssel_bos <- syssel_bos %>% 
+  mutate(Eir_Er_industri = Industri/`Alle Næringer`,
+         Eir_Er_Jordbruk = `Jordbruk, Skogbrug og Fiske`/`Alle Næringer`,
+         Eir_Er_Undervisning = Undervisning/`Alle Næringer`,
+         Eir_Er_Helse = `Helse- og Sosialtjenester`/`Alle Næringer`)
+```
+
+
+```{r}
+nasjonalt_bosted <- nasjonalt_bosted %>% 
+  mutate(Ein_En_Industri = Industri/`Alle Næringer`,
+         Ein_En_Jordbruk = `Jordbruk, Skogbruk og Fiske`/`Alle Næringer`,
+         Ein_En_Undervisning = Undervisning/`Alle Næringer`,
+         Ein_En_Helse = `Helse- og Sosialtjenester`/`Alle Næringer`)
+
+# Forelår å være litt mer forsiktig her. syssel_bos$Eir_Er_industri har lengde 207
+# 13*15 + 12 (den siste Odda). nasjonalt_bosted$Ein_En_Industri har lengde 13
+# Koden her forutsetter at nasjonalt_bosted$Ein_En_Industri kan replikeres 16
+# ganger. Risky i utgangspunktet og her går det galt pga. Odda med 12 obs.
+# Medfører at resultatet blir galt etter Odda. Foreslår å ta det mer stegvis slik at
+# en gar mer kontroll
+
+LQindustri <- syssel_bos %>% 
+  select(aar, knavn, Eir_Er_industri) %>% 
+  mutate(aar = as.character(aar)) %>% 
+  left_join(select(.data = nasjonalt_bosted, aar, Ein_En_Industri), by = c("aar")) %>% 
+  mutate(andel = Eir_Er_industri/Ein_En_Industri)
+
+
+LQjordbruk <- syssel_bos %>% 
+  select(aar, knavn, Eir_Er_Jordbruk) %>% 
+  mutate(aar = as.character(aar)) %>% 
+  left_join(select(.data = nasjonalt_bosted, aar, Ein_En_Jordbruk), by = c("aar")) %>% 
+  mutate(andel = Eir_Er_Jordbruk/Ein_En_Jordbruk)
+
+LQundervisning <- syssel_bos %>% 
+  select(aar, knavn, Eir_Er_Undervisning) %>% 
+  mutate(aar = as.character(aar)) %>% 
+  left_join(select(.data = nasjonalt_bosted, aar, Ein_En_Undervisning), by = c("aar")) %>% 
+  mutate(andel = Eir_Er_Undervisning/Ein_En_Undervisning)
+
+LQhelse <- syssel_bos %>% 
+  select(aar, knavn, Eir_Er_Helse) %>% 
+  mutate(aar = as.character(aar)) %>% 
+  left_join(select(.data = nasjonalt_bosted, aar, Ein_En_Helse), by = c("aar")) %>% 
+  mutate(andel = Eir_Er_Helse/Ein_En_Helse)
+```
+
 
 ## Lokaliseringskvotienter for enkeltkommuner
+
+```{r}
+hau08 <- syssel_bos %>% 
+  filter(aar == "2008", knavn == "Haugesund")
+
+(hau08$Industri/hau08$`Alle Næringer`)
+2289/17611
+```
+
+$\frac{Eir}{Er}=\frac{2289}{17611}=0.1299756$
+Vi ser at industri utgjør 13% av sysselsettingen i Haugesund i år 2008. Dette må vi dividere med $\frac{Nasjonal\,sysselsetting\,i\, industri}{Nasjonal\,sysselsetting}$
+Industrien i Haugesund har redusert både i andel, og faktisk størrelse. 
 
 ```{r haugesund20}
 hau20 <- syssel_bos %>% 
@@ -687,8 +748,36 @@ hau20 <- syssel_bos %>%
 (hau20$Industri/hau20$`Alle Næringer`)
 1905/18137
 ```
+
 $\frac{Eir}{Er}=\frac{1905}{18137}=0.1050339$
 Vi ser at industri utgjør 10% av sysselsettingen i Haugesund i år 2020. Dette må vi dividere med $\frac{Nasjonal\,sysselsetting\,i\, industri}{Nasjonal\,sysselsetting}$
+
+```{r}
+kar08 <- syssel_bos %>% 
+  filter(aar == "2008", knavn == "Karmøy")
+```
+
+```{r}
+(kar08$Industri/kar08$`Alle Næringer`)
+3694/20182
+```
+
+$\frac{Eir}{Er}=\frac{2289}{17611}=0.1299756$
+Vi ser at industri utgjør 18% av sysselsettingen i Karmøy i år 2008. Dette må vi dividere med $\frac{Nasjonal\,sysselsetting\,i\, industri}{Nasjonal\,sysselsetting}$
+Industrien i Karmøy har minket både i andel, og faktisk størrelse. 
+
+```{r}
+kar20 <- syssel_bos %>% 
+  filter(aar == "2020", knavn == "Karmøy")
+```
+
+```{r}
+(kar20$Industri/kar20$`Alle Næringer`)
+2725/20063
+```
+
+$\frac{Eir}{Er}=\frac{1905}{18137}=0.1050339$
+Vi ser at industri utgjør 13,5% av sysselsettingen i Karmøy i år 2020. Dette må vi dividere med $\frac{Nasjonal\,sysselsetting\,i\, industri}{Nasjonal\,sysselsetting}$
 
 # Oppgave 4
 
