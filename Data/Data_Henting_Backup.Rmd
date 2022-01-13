@@ -775,16 +775,56 @@ har_bos <- har_bos %>%
 
 ```{r}
 har_bos <- har_bos %>% 
-  filter(NACE2007 %in% c("00-99", "10-33", "01-03", "85", "86-88"))
-```
-
-```{r}
-har_bos <- har_bos %>% 
   mutate(
     Ullensvang = `1231_Ullensvang (1977-2019)` + `4618_Ullensvang`,
     Totalt = `1228_Odda (1913-2019)` + Ullensvang) %>% 
-  select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
+  select(NACE2007, Kjonn, Alder, ContentsCode, aar, `1228_Odda (1913-2019)`, Ullensvang)
 ```
+
+```{r}
+har_bos_LQ <- har_bos
+
+names(har_bos_LQ)[[6]] <- "Odda(-2019)"
+names(har_bos_LQ)[[7]] <- "Ullensvang"
+
+har_bos_LQ <- har_bos_LQ %>% 
+  mutate(
+    Kjonn = fct_recode(Kjonn,
+                     "Begge Kjønn" = "0"))
+
+har_bos_LQ <- har_bos_LQ %>% 
+  mutate(
+    NACE2007 = fct_recode(NACE2007,
+                     "Alle Næringer" = "00-99",
+                       "Primærnæring" = "01-03",
+                       "Industri" = "10-33",
+                       "Undervisning" = "85",
+                       "Helsetjenester" = "86-88")) 
+
+har_bos_LQ <- har_bos_LQ %>%
+  filter(NACE2007 %in% c("Alle Næringer", "Primærnæring", "Industri", "Undervisning", "Helsetjenester")) %>% 
+  pivot_wider(
+    names_from = NACE2007,
+    values_from = c("Odda(-2019)", "Ullensvang")) %>% 
+  mutate(
+    Totalt_Reg_Næringer = `Odda(-2019)_Alle Næringer` + `Ullensvang_Alle Næringer`,
+    
+    Totalt_Reg_Industri = `Odda(-2019)_Industri` + Ullensvang_Industri,
+
+    Totalt_Reg_Primærnæring = `Odda(-2019)_Primærnæring` + `Ullensvang_Primærnæring`,
+
+    Totalt_Reg_Undervisning = `Odda(-2019)_Undervisning` + `Ullensvang_Undervisning`,
+    
+    Totalt_Reg_Helsetjenester = `Odda(-2019)_Helsetjenester` + `Ullensvang_Helsetjenester`)
+```
+
+
+```{r}
+har_bos <- har_bos %>% 
+  filter(NACE2007 %in% c("00-99", "10-33", "01-03", "85", "86-88"))
+```
+
+
 
 ```{r}
 har_bos <- har_bos %>% 
@@ -964,7 +1004,8 @@ write_csv(har_bos, file="har_bos.csv")
 
 #oppgave 3
 write_csv(hld_bos_LQ, file="hld_bos_LQ.csv")
-write_csv(sun_bos_LQ, file= "sun_bos_LQ.csv")
+write_csv(sun_bos_LQ, file="sun_bos_LQ.csv")
+write_csv(har_bos_LQ, file="har_bos_LQ.csv")
 #oppgave 4
 write_csv(Pendling, file = "Pendling.csv")
 write_csv(hgl_Pendling, file = "hgl_Pendling.csv")
