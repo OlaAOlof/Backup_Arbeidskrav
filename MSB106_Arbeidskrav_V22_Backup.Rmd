@@ -648,7 +648,7 @@ nasjonalt_bosted <- read_excel("Data/nasjonalt_bosted.xlsx")
 - Eir_Er_Undervisning = Samlet nasjonal sysselsetting i sektor Industri
 - Eir_Er_Helse = Samlet nasjonal sysselsetting
 
-```{r hld_industri}
+```{r sun_industri}
 sun_bos_LQ <- sun_bos_LQ %>% 
   # Slik finner vi samlet sysselsetting i Industri i Sunnhordland for år 2008-2020
   mutate(Eir_Er_industri = Totalt_Reg_Industri/Totalt_Reg_Næringer,
@@ -663,7 +663,7 @@ sun_bos_LQ <- sun_bos_LQ %>%
 - Eir_Er_Undervisning = Samlet nasjonal sysselsetting i sektor Industri
 - Eir_Er_Helse = Samlet nasjonal sysselsetting
 
-```{r hld_industri}
+```{r har_industri}
 har_bos_LQ <- har_bos_LQ %>% 
   # Slik finner vi samlet sysselsetting i Industri i Hardanger for år 2008-2020
   mutate(Eir_Er_industri = Totalt_Reg_Industri/Totalt_Reg_Næringer,
