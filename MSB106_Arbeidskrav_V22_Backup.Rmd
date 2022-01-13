@@ -620,6 +620,75 @@ har_bos_long %>%
   theme(legend.position = 'bottom')
 ```
 
+# 3.1 Lokaliseringskvotienter
+
+## Lokaliseringskvotienter for regionene samlet
+### Haugalandet 2008-2020
+- Eir_Er_industri = Samlet sysselsetting i sektor Industri i region Haugalandet
+- Eir_Er_Jordbruk = Samlet sysselsetting i region Haugalandet
+- Eir_Er_Undervisning = Samlet nasjonal sysselsetting i sektor Industri
+- Eir_Er_Helse = Samlet nasjonal sysselsetting
+
+```{r hld_industri}
+hld_bos_LQ <- hld_bos_LQ %>% 
+  # Slik finner vi samlet sysselsetting i Industri i Haugelandet for år 2008-2020
+  mutate(Eir_Er_industri = Totalt_Reg_Industri/Totalt_Reg_Næringer,
+         Eir_Er_Jordbruk = Totalt_Reg_Primærnæring/Totalt_Reg_Næringer,
+         Eir_Er_Undervisning = Totalt_Reg_Undervisning/Totalt_Reg_Næringer,
+         Eir_Er_Helse = Totalt_Reg_Helsetjenester/Totalt_Reg_Næringer)
+```
+
+```{r}
+library(readxl)
+nasjonalt_bosted <- read_excel("Data/nasjonalt_bosted.xlsx")
+```
+### Sunnhordland 2008-2020
+- Eir_Er_industri = Samlet sysselsetting i sektor Industri i region Sunnhordland
+- Eir_Er_Jordbruk = Samlet sysselsetting i region Sunnhordland
+- Eir_Er_Undervisning = Samlet nasjonal sysselsetting i sektor Industri
+- Eir_Er_Helse = Samlet nasjonal sysselsetting
+
+```{r hld_industri}
+sun_bos_LQ <- sun_bos_LQ %>% 
+  # Slik finner vi samlet sysselsetting i Industri i Sunnhordland for år 2008-2020
+  mutate(Eir_Er_industri = Totalt_Reg_Industri/Totalt_Reg_Næringer,
+         Eir_Er_Jordbruk = Totalt_Reg_Primærnæring/Totalt_Reg_Næringer,
+         Eir_Er_Undervisning = Totalt_Reg_Undervisning/Totalt_Reg_Næringer,
+         Eir_Er_Helse = Totalt_Reg_Helsetjenester/Totalt_Reg_Næringer)
+```
+
+### Hardanger 2008-2020
+- Eir_Er_industri = Samlet sysselsetting i sektor Industri i region Hardanger
+- Eir_Er_Jordbruk = Samlet sysselsetting i region Hardanger
+- Eir_Er_Undervisning = Samlet nasjonal sysselsetting i sektor Industri
+- Eir_Er_Helse = Samlet nasjonal sysselsetting
+
+```{r hld_industri}
+har_bos_LQ <- har_bos_LQ %>% 
+  # Slik finner vi samlet sysselsetting i Industri i Hardanger for år 2008-2020
+  mutate(Eir_Er_industri = Totalt_Reg_Industri/Totalt_Reg_Næringer,
+         Eir_Er_Jordbruk = Totalt_Reg_Primærnæring/Totalt_Reg_Næringer,
+         Eir_Er_Undervisning = Totalt_Reg_Undervisning/Totalt_Reg_Næringer,
+         Eir_Er_Helse = Totalt_Reg_Helsetjenester/Totalt_Reg_Næringer)
+```
+
+NÅ MÅ VI HA NASJONALT DATASETT FOR Å DELE VERIDENE PÅ NASJONAL SYSSELSETTING OG FÅ LOKALISERINGSKVOTIENTEN
+
+
+## Lokaliseringskvotienter for enkeltkommuner
+
+```{r haugesund20}
+hau20 <- syssel_bos %>% 
+  filter(aar == "2020", knavn == "Haugesund")
+```
+
+```{r}
+(hau20$Industri/hau20$`Alle Næringer`)
+1905/18137
+```
+$\frac{Eir}{Er}=\frac{1905}{18137}=0.1050339$
+Vi ser at industri utgjør 10% av sysselsettingen i Haugesund i år 2020. Dette må vi dividere med $\frac{Nasjonal\,sysselsetting\,i\, industri}{Nasjonal\,sysselsetting}$
+
 # Oppgave 4
 
 Pendling er et viktig begrep å bruke når vi snakker om regional utvikling. De ulike kommunene eller regionene kan ha ulike behov. De aller fleste kommuner har for lite arbeidsplasser i forhold til antall arbeidene.  Det vil si at de fleste plasser er de avhengige av å pendle til andre plasser. Det kan være andre kommuner i samme region eller andre regioner. Det finnes også begrepet netto innpendling som betyr at noen kommuner eller regioner har flere arbeidsplasser tilgjengelige enn de har folk til å jobbe der innad i kommunen. Vi skal se på innpendling og utpendling som vil kunne fortelle oss i hvilken grad et sted er integrert i et større arbeidsmarked https://regionalanalyse.no/rapport/3004/1/4. 
@@ -705,12 +774,6 @@ LQindustri <- syssel_bos %>%
   mutate(
   andel = Eir_Er_industri/Ein_En_Industri
   )
-
-# Disse må fikses på tilsvarende vis. Har feil verdier slik de er nå 
-LQjordbruk <- as_tibble(syssel_bos$Eir_Er_Jordbruk/nasjonalt_bosted$Ein_En_Jordbruk)
-LQundervisning <- as_tibble(syssel_bos$Eir_Er_Undervisning/nasjonalt_bosted$Ein_En_Undervisning)
-LQhelse <- as_tibble(syssel_bos$Eir_Er_Helse/nasjonalt_bosted$Ein_En_Helse)
-```
 
 ```{r}
 syssel_bos <- syssel_bos %>% 
