@@ -14,7 +14,10 @@ library(lubridate)
 
 ```{r knr}
 # Vector med relevante kommunenummer
-load("knr.Rdata")
+# Hva skal dere med alle disse?
+# load("knr.Rdata")
+# velger de som trengs
+knr <- as.character(c(1106, 1135, 1145, 1146, 1149, 1151, 1160, 1211, 4611, 1216, 4612, 1219, 4613, 1221, 4614, 1222, 4615, 1223, 4616, 1224, 4617, 1228, 1231, 4618))
 ```
 
 ```{r Moenster}
@@ -26,74 +29,47 @@ moenster <- '\\s*\\([\\d\\s-]*\\d*\\)\\s*$'
 
 ```{r}
 # Henter her inn data via API og inkluderer alle kommunenumre
-syssel_arb <- ApiData(
+syssel_arb_raw <- ApiData(
   urlToData = "07984",
-  Region = list("vs:KommunerS", c(
-          "1106",
-          "1135",
-          "1145",
-          "1146",
-          "1149",
-          "1151",
-          "1160",
-          "4611",
-          "4612",
-          "4613",
-          "4614",
-          "4615",
-          "4616",
-          "4617",
-          "4618",
-          "1211",
-          "1216",
-          "1219",
-          "1221",
-          "1222",
-          "1223",
-          "1224",
-          "1227",
-          "1228",
-          "1231")),
+  Region = knr,
   ContentsCode = "SysselsatteArb",
   NACE2007 = TRUE,
   Alder = "15-74",
   Kjonn = "0",
-  Tid = c(
-    as.character(2008:2020)))
+  Tid = c(as.character(2008:2020)),
+  makeNAstatus = FALSE
+  )
 ```
 
 ```{r}
-syssel_arb <- syssel_arb$dataset %>% 
-  tibble() %>% 
-  rename(
-    knr = Region,
-    aar = Tid
-) %>% 
-    mutate(knavn = syssel_arb$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+# Skifter navn på første komponent
+names(syssel_arb_raw)[1] <- "desc"
 ```
 
-```{r}
-# Fjerne irrelevant kolonne som heter NAstatus
-syssel_arb <- syssel_arb %>% 
-  select(-NAstatus)
-```
 
 ```{r}
-syssel_arb <- syssel_arb %>% 
-  pivot_wider(
-    names_from = NACE2007,
-    values_from = value)
+# Lager datasettet ved å plukke fra desc og dataset
+# Ser ingen grunn til å dra på kjønnsvariabelen siden dere har valgt
+# begge kjønn. Så alle observasjonene er for begge kjønn
+syssel_arb <- tibble(
+  knr = syssel_arb_raw$dataset$Region,
+  knavn = syssel_arb_raw$desc$region,
+  aar = syssel_arb_raw$desc$år,
+  SN2007 = syssel_arb_raw$desc$`næring (SN2007)`,
+  NACE2007 = syssel_arb_raw$dataset$NACE2007,
+  ansatte = syssel_arb_raw$dataset$value
+)
 ```
 
-```{r}
-names(syssel_arb)[[1]] <- "knr"
-```
+
 
 ```{r}
-syssel_arb <- syssel_arb %>%
-  filter(
-    knr %in% c(1106, 1135, 1145, 1146, 1149, 1151, 1160, 1211, 4611, 1216, 4612, 1219, 4613, 1221, 4614, 1222, 4615, 1223, 4616, 1224, 4617, 1228, 1231, 4618))
+# syssel_arb <- syssel_arb %>% 
+#   pivot_wider(
+#     names_from = NACE2007,
+#     values_from = value)
 ```
+
 
 ```{r}
 syssel_arb <- syssel_arb %>% 
@@ -102,46 +78,49 @@ syssel_arb <- syssel_arb %>%
 ```
 
 ```{r}
+# Disse har vi i variabelen SN2007
+# names(syssel_arb)[[7]] <- "Alle Næringer"
+# names(syssel_arb)[[8]] <- "Jordbruk, Skogbrug og Fiske"
+# etc.
+```
+
+```{r}
+# Jeg vil heller foreslå å legge knr i en ny variabel old_knr. 
+# Så oppdatere knr med nye kommunenummer og så gruppere mht. dette
+# og summere. Ikke gjeldene kommuner har jo verdien 0
+#syssel_arb <- syssel_arb[syssel_arb$`Alle Næringer` !=0, ]
+```
+
+```{r}
 syssel_arb <- syssel_arb %>% 
   mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
+    old_knr = knr,
+    knr = case_when(
+      knr == "1211" ~ "4611",
+      knr == "1216" ~ "4612",
+      knr == "1219" ~ "4613",
+      knr == "1221" ~ "4614",
+      knr == "1222" ~ "4615",
+      knr == "1223" ~ "4616",
+      knr == "1224" ~ "4617",
+      knr == "1231" ~ "4618",
+      TRUE ~ as.character(knr)
+      )
+    ) %>% 
+  group_by(knr, aar, knavn, SN2007, NACE2007) %>% 
+  summarise(ansatte = sum(ansatte))
 ```
 
-```{r}
-names(syssel_arb)[[7]] <- "Alle Næringer"
-names(syssel_arb)[[8]] <- "Jordbruk, Skogbrug og Fiske"
-names(syssel_arb)[[9]] <- "Bergverksdrift og Utvinning"
-names(syssel_arb)[[10]] <- "Industri"
-names(syssel_arb)[[11]] <- "Elektrisitet, Vann og Renovasjon"
-names(syssel_arb)[[12]] <- "Bygge- og Anleggsvirksomhet"
-names(syssel_arb)[[13]] <- "Varehandel, Reperasjon av Motorvogner"
-names(syssel_arb)[[14]] <- "Transport og Lagring"
-names(syssel_arb)[[15]] <- "Overnattings- og Servicevirksomhet"
-names(syssel_arb)[[16]] <- "Informasjon og Kommunikasjon"
-names(syssel_arb)[[17]] <- "Finansiering og Forsikring"
-names(syssel_arb)[[18]] <- "Teknisk Tjenesteyting, Eiendomsdrift"
-names(syssel_arb)[[19]] <- "Forretningsmessig Tjenesteyting"
-names(syssel_arb)[[20]] <- "Off.Adm, Forsvar, Sosialforsikring"
-names(syssel_arb)[[21]] <- "Undervisning"
-names(syssel_arb)[[22]] <- "Helse- og Sosialtjenester"
-names(syssel_arb)[[23]] <- "Personlig Tjenesteyting"
-names(syssel_arb)[[24]] <- "Uoppgitt"
-```
 
 ```{r}
-syssel_arb <- syssel_arb[syssel_arb$`Alle Næringer` !=0, ]
-```
-
-```{r}
-syssel_arb[1][(syssel_arb)[1] == "1211"] <- "4611"
-syssel_arb[1][(syssel_arb)[1] == "1216"] <- "4612"
-syssel_arb[1][(syssel_arb)[1] == "1219"] <- "4613"
-syssel_arb[1][(syssel_arb)[1] == "1221"] <- "4614"
-syssel_arb[1][(syssel_arb)[1] == "1222"] <- "4615"
-syssel_arb[1][(syssel_arb)[1] == "1223"] <- "4616"
-syssel_arb[1][(syssel_arb)[1] == "1224"] <- "4617"
-syssel_arb[1][(syssel_arb)[1] == "1231"] <- "4618"
+# syssel_arb[1][(syssel_arb)[1] == "1211"] <- "4611"
+# syssel_arb[1][(syssel_arb)[1] == "1216"] <- "4612"
+# syssel_arb[1][(syssel_arb)[1] == "1219"] <- "4613"
+# syssel_arb[1][(syssel_arb)[1] == "1221"] <- "4614"
+# syssel_arb[1][(syssel_arb)[1] == "1222"] <- "4615"
+# syssel_arb[1][(syssel_arb)[1] == "1223"] <- "4616"
+# syssel_arb[1][(syssel_arb)[1] == "1224"] <- "4617"
+# syssel_arb[1][(syssel_arb)[1] == "1231"] <- "4618"
 ```
 
 ## Haugalandet, Sunnhordland & Hardanger
@@ -149,330 +128,314 @@ syssel_arb[1][(syssel_arb)[1] == "1231"] <- "4618"
 ### Haugalandet
 
 ```{r}
-hld_arb <- ApiData(
-  urlToData = "07984",
-  Region = list("vs:KommunerS", c(
-          "1106",
-          "1135",
-          "1145",
-          "1146",
-          "1149",
-          "1151",
-          "1160")),
-  ContentsCode = "SysselsatteArb",
-  NACE2007 = TRUE,
-  Alder = "15-74",
-  Kjonn = "0",
-  Tid = c(
-    as.character(2008:2020)))
+# Gir samme svar med laaaaangt mindre arbeid
+# Dropper variablene "Næringer", "Kjonn", "Alder", "ContentsCode"
+# siden de ikke inneholder noe informasjon (lik for alle obs.)
+# Kanskje vurdere et mer beskrivende navn tot_ans_alle_naeringer el.
+hld_arb <- syssel_arb %>% 
+  filter(knr %in% c("1106", "1135", "1145", "1146", "1149", "1151", "1160")) %>% 
+  filter(SN2007 == "Alle næringer") %>% 
+  group_by(aar) %>% 
+  summarise(Totalt = sum(ansatte))
 ```
 
 ```{r}
-hld_arb <- hld_arb$dataset %>% 
-  tibble() %>% 
-  rename(
-    knr = Region,
-    aar = Tid
-) %>% 
-    mutate(knavn = hld_arb$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+# hld_arb <- ApiData(
+#   urlToData = "07984",
+#   Region = list("vs:KommunerS", c(
+#           "1106",
+#           "1135",
+#           "1145",
+#           "1146",
+#           "1149",
+#           "1151",
+#           "1160")),
+#   ContentsCode = "SysselsatteArb",
+#   NACE2007 = TRUE,
+#   Alder = "15-74",
+#   Kjonn = "0",
+#   Tid = c(
+#     as.character(2008:2020)))
 ```
 
 ```{r}
-hld_arb <- hld_arb %>% 
-  pivot_wider(
-    names_from = c(knr, knavn),
-    values_from = value)
+# hld_arb <- hld_arb$dataset %>% 
+#   tibble() %>% 
+#   rename(
+#     knr = Region,
+#     aar = Tid
+# ) %>% 
+#     mutate(knavn = hld_arb$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
 ```
 
 ```{r}
-hld_arb <- hld_arb %>% 
-  filter(NACE2007 == "00-99")
+# hld_arb <- hld_arb %>% 
+#   pivot_wider(
+#     names_from = c(knr, knavn),
+#     values_from = value)
+```
+
+```{r}
+# hld_arb <- hld_arb %>% 
+#   filter(NACE2007 == "00-99")
 ```
 
 
 ```{r}
-hld_arb <- hld_arb %>% 
-  mutate(
-    Totalt = `1106_Haugesund` + `1135_Sauda` + `1145_Bokn` + `1146_Tysvær` + `1149_Karmøy` + `1151_Utsira` + `1160_Vindafjord`) %>% 
-  select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
+# hld_arb <- hld_arb %>% 
+#   mutate(
+#     Totalt = `1106_Haugesund` + `1135_Sauda` + `1145_Bokn` + `1146_Tysvær` + `1149_Karmøy` + `1151_Utsira` + `1160_Vindafjord`) %>% 
+#   select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
 ```
 
 ```{r}
-hld_arb <- hld_arb %>% 
-  mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
-
-hld_arb <- hld_arb %>% 
-  mutate(
-    NACE2007 = fct_recode(NACE2007,
-                     "Alle Næringer" = "00-99"))
+# hld_arb <- hld_arb %>% 
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+# 
+# hld_arb <- hld_arb %>% 
+#   mutate(
+#     NACE2007 = fct_recode(NACE2007,
+#                      "Alle Næringer" = "00-99"))
 ```
 
 ```{r}
-names(hld_arb)[[1]] <- "Næringer"
-names(hld_arb)[[5]] <- "År"
+# names(hld_arb)[[1]] <- "Næringer"
+# names(hld_arb)[[5]] <- "År"
 ```
 
 ### Sunnhordland
 
 ```{r}
-sun_arb <- ApiData(
-  urlToData = "07984",
-  Region = list("vs:KommunerS", c(
-          "1211",
-          "1216",
-          "1219",
-          "1221",
-          "1222",
-          "1223",
-          "1224",
-          "4611",
-          "4612",
-          "4613",
-          "4614",
-          "4615",
-          "4616",
-          "4617")),
-  ContentsCode = "SysselsatteArb",
-  NACE2007 = TRUE,
-  Alder = "15-74",
-  Kjonn = "0",
-  Tid = c(
-    as.character(2008:2020)))
+# Gir samme svar som koden under. Jeg vil påstå at min metode er enklere ;-)
+sun_arb <- syssel_arb %>% 
+  # Trenger bare nye knr siden det er de som nå ligger i knr
+  filter(knr %in% c("4611", "4612", "4613", "4614", "4615", "4616", "4617")) %>% 
+  filter(SN2007 == "Alle næringer") %>% 
+  group_by(aar) %>% 
+  summarise(Totalt = sum(ansatte))
+```
+
+
+```{r}
+# sun_arb <- ApiData(
+#   urlToData = "07984",
+#   Region = list("vs:KommunerS", c(
+#           "1211",
+#           "1216",
+#           "1219",
+#           "1221",
+#           "1222",
+#           "1223",
+#           "1224",
+#           "4611",
+#           "4612",
+#           "4613",
+#           "4614",
+#           "4615",
+#           "4616",
+#           "4617")),
+#   ContentsCode = "SysselsatteArb",
+#   NACE2007 = TRUE,
+#   Alder = "15-74",
+#   Kjonn = "0",
+#   Tid = c(
+#     as.character(2008:2020)))
 ```
 
 ```{r}
-sun_arb <- sun_arb$dataset %>% 
-  tibble() %>% 
-  rename(
-    knr = Region,
-    aar = Tid
-) %>% 
-    mutate(knavn = sun_arb$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+# sun_arb <- sun_arb$dataset %>% 
+#   tibble() %>% 
+#   rename(
+#     knr = Region,
+#     aar = Tid
+# ) %>% 
+#     mutate(knavn = sun_arb$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
 ```
 
 ```{r}
-sun_arb <- sun_arb %>% 
-  pivot_wider(
-    names_from = c(knr, knavn),
-    values_from = value)
+# sun_arb <- sun_arb %>% 
+#   pivot_wider(
+#     names_from = c(knr, knavn),
+#     values_from = value)
 ```
 
 ```{r}
-sun_arb <- sun_arb %>% 
-  filter(NACE2007 == "00-99")
+# sun_arb <- sun_arb %>% 
+#   filter(NACE2007 == "00-99")
 ```
 
 ```{r}
-sun_arb <- sun_arb %>% 
-  mutate(
-    Etne = `4611_Etne` + `1211_Etne (-2019)`,
-    Sveio = `4612_Sveio` + `1216_Sveio (-2019)`,
-    Bømlo = `4613_Bømlo` + `1219_Bømlo (1916-2019)`,
-    Stord = `4614_Stord` + `1221_Stord (-2019)`,
-    Fitjar = `4615_Fitjar` + `1222_Fitjar (-2019)`,
-    Tysnes = `4616_Tysnes` + `1223_Tysnes (-2019)`,
-    Kvinnherad = `4617_Kvinnherad` + `1224_Kvinnherad (-2019)`,
-    Totalt = Etne + Sveio + Bømlo + Stord + Fitjar + Tysnes + Kvinnherad) %>% 
-  select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
+# sun_arb <- sun_arb %>% 
+#   mutate(
+#     Etne = `4611_Etne` + `1211_Etne (-2019)`,
+#     Sveio = `4612_Sveio` + `1216_Sveio (-2019)`,
+#     Bømlo = `4613_Bømlo` + `1219_Bømlo (1916-2019)`,
+#     Stord = `4614_Stord` + `1221_Stord (-2019)`,
+#     Fitjar = `4615_Fitjar` + `1222_Fitjar (-2019)`,
+#     Tysnes = `4616_Tysnes` + `1223_Tysnes (-2019)`,
+#     Kvinnherad = `4617_Kvinnherad` + `1224_Kvinnherad (-2019)`,
+#     Totalt = Etne + Sveio + Bømlo + Stord + Fitjar + Tysnes + Kvinnherad) %>% 
+#   select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
 ```
 
 ```{r}
-sun_arb <- sun_arb %>% 
-  mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
-
-sun_arb <- sun_arb %>% 
-  mutate(
-    NACE2007 = fct_recode(NACE2007,
-                     "Alle Næringer" = "00-99"))
+# sun_arb <- sun_arb %>% 
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+# 
+# sun_arb <- sun_arb %>% 
+#   mutate(
+#     NACE2007 = fct_recode(NACE2007,
+#                      "Alle Næringer" = "00-99"))
 ```
 
 ```{r}
-names(sun_arb)[[1]] <- "Næringer"
-names(sun_arb)[[5]] <- "År"
+# names(sun_arb)[[1]] <- "Næringer"
+# names(sun_arb)[[5]] <- "År"
 ```
 
 ### Hardanger
 
 ```{r}
-har_arb <- ApiData(
-  urlToData = "07984",
-  Region = list("vs:KommunerS", c(
-          "1228",
-          "1231",
-          "4618")),
-  ContentsCode = "SysselsatteArb",
-  NACE2007 = TRUE,
-  Alder = "15-74",
-  Kjonn = "0",
-  Tid = c(
-    as.character(2008:2020)))
+# Gir samme svar som koden under. Jeg vil påstå at min metode er enklere ;-)
+har_arb <- syssel_arb %>% 
+  # Trenger bare nye knr siden det er de som nå ligger i knr
+  filter(knr %in% c("1228", "1231", "4618")) %>% 
+  filter(SN2007 == "Alle næringer") %>% 
+  group_by(aar) %>% 
+  summarise(Totalt = sum(ansatte))
+```
+
+
+```{r}
+# har_arb <- ApiData(
+#   urlToData = "07984",
+#   Region = list("vs:KommunerS", c(
+#           "1228",
+#           "1231",
+#           "4618")),
+#   ContentsCode = "SysselsatteArb",
+#   NACE2007 = TRUE,
+#   Alder = "15-74",
+#   Kjonn = "0",
+#   Tid = c(
+#     as.character(2008:2020)))
 ```
 
 ```{r}
-har_arb <- har_arb$dataset %>% 
-  tibble() %>% 
-  rename(
-    knr = Region,
-    aar = Tid
-) %>% 
-    mutate(knavn = har_arb$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+# har_arb <- har_arb$dataset %>% 
+#   tibble() %>% 
+#   rename(
+#     knr = Region,
+#     aar = Tid
+# ) %>% 
+#     mutate(knavn = har_arb$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
 ```
 
 ```{r}
-har_arb <- har_arb %>% 
-  pivot_wider(
-    names_from = c(knr, knavn),
-    values_from = value)
+# har_arb <- har_arb %>% 
+#   pivot_wider(
+#     names_from = c(knr, knavn),
+#     values_from = value)
 ```
 
 ```{r}
-har_arb <- har_arb %>% 
-  filter(NACE2007 == "00-99")
+# har_arb <- har_arb %>% 
+#   filter(NACE2007 == "00-99")
 ```
 
 ```{r}
-har_arb <- har_arb %>% 
-  mutate(
-    Ullensvang = `1231_Ullensvang (1977-2019)` + `4618_Ullensvang`,
-    Totalt = `1228_Odda (1913-2019)` + Ullensvang) %>% 
-  select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
+# har_arb <- har_arb %>% 
+#   mutate(
+#     Ullensvang = `1231_Ullensvang (1977-2019)` + `4618_Ullensvang`,
+#     Totalt = `1228_Odda (1913-2019)` + Ullensvang) %>% 
+#   select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
 ```
 
 ```{r}
-har_arb <- har_arb %>% 
-  mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
-
-har_arb <- har_arb %>% 
-  mutate(
-    NACE2007 = fct_recode(NACE2007,
-                     "Alle Næringer" = "00-99"))
+# har_arb <- har_arb %>% 
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+# 
+# har_arb <- har_arb %>% 
+#   mutate(
+#     NACE2007 = fct_recode(NACE2007,
+#                      "Alle Næringer" = "00-99"))
 ```
 
 ```{r}
-names(har_arb)[[1]] <- "Næringer"
-names(har_arb)[[5]] <- "År"
+# names(har_arb)[[1]] <- "Næringer"
+# names(har_arb)[[5]] <- "År"
 ```
 
 # 1b. Sysselsatte Etter Bosted (Kevin & Ola A.)
 
+## ag kode
+
+Har sjekket at min kode gir samme svar
+
 ```{r}
 # Henter her inn data via API og inkluderer alle kommunenumre
-syssel_bos <- ApiData(
+syssel_bos_raw <- ApiData(
   urlToData = "07984",
-  Region = list("vs:KommunerS", c(
-          "1106",
-          "1135",
-          "1145",
-          "1146",
-          "1149",
-          "1151",
-          "1160",
-          "4611",
-          "4612",
-          "4613",
-          "4614",
-          "4615",
-          "4616",
-          "4617",
-          "4618",
-          "1211",
-          "1216",
-          "1219",
-          "1221",
-          "1222",
-          "1223",
-          "1224",
-          "1227",
-          "1228",
-          "1231")),
+  Region = knr,
   ContentsCode = "Sysselsatte",
   NACE2007 = TRUE,
   Alder = "15-74",
   Kjonn = "0",
-  Tid = c(
-    as.character(2008:2020)))
+  Tid = c(as.character(2008:2020)),
+  makeNAstatus = FALSE
+  )
 ```
 
 ```{r}
-syssel_bos <- syssel_bos$dataset %>% 
-  tibble() %>% 
-  rename(
-    knr = Region,
-    aar = Tid
-) %>% 
-    mutate(knavn = syssel_bos$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+# Skifter navn på første komponent
+names(syssel_bos_raw)[1] <- "desc"
 ```
 
 ```{r}
-syssel_bos <- syssel_bos %>% 
-  pivot_wider(
-    names_from = NACE2007,
-    values_from = value)
-```
-
-```{r}
-names(syssel_bos)[[1]] <- "knr"
-```
-
-```{r}
-syssel_bos <- syssel_bos %>%
-  filter(
-    knr %in% c(1106, 1135, 1145, 1146, 1149, 1151, 1160, 1211, 4611, 1216, 4612, 1219, 4613, 1221, 4614, 1222, 4615, 1223, 4616, 1224, 4617, 1228, 1231, 4618))
+# Lager datasettet ved å plukke fra desc og dataset
+# Ser ingen grunn til å dra på kjønnsvariabelen siden dere har valgt
+# begge kjønn. Så alle observasjonene er for begge kjønn
+syssel_bos <- tibble(
+  knr = syssel_bos_raw$dataset$Region,
+  knavn = syssel_bos_raw$desc$region,
+  aar = syssel_bos_raw$desc$år,
+  SN2007 = syssel_bos_raw$desc$`næring (SN2007)`,
+  NACE2007 = syssel_bos_raw$dataset$NACE2007,
+  sysselsatte = syssel_bos_raw$dataset$value
+)
 ```
 
 ```{r}
 syssel_bos <- syssel_bos %>% 
   mutate(
-    knavn = str_replace(knavn, moenster, ""))
+    knavn = str_replace(knavn, moenster, "")
+    )
 ```
 
 ```{r}
 syssel_bos <- syssel_bos %>% 
   mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
-```
-
-```{r}
-names(syssel_bos)[[7]] <- "Alle Næringer"
-names(syssel_bos)[[8]] <- "Jordbruk, Skogbrug og Fiske"
-names(syssel_bos)[[9]] <- "Bergverksdrift og Utvinning"
-names(syssel_bos)[[10]] <- "Industri"
-names(syssel_bos)[[11]] <- "Elektrisitet, Vann og Renovasjon"
-names(syssel_bos)[[12]] <- "Bygge- og Anleggsvirksomhet"
-names(syssel_bos)[[13]] <- "Varehandel, Reperasjon av Motorvogner"
-names(syssel_bos)[[14]] <- "Transport og Lagring"
-names(syssel_bos)[[15]] <- "Overnattings- og Servicevirksomhet"
-names(syssel_bos)[[16]] <- "Informasjon og Kommunikasjon"
-names(syssel_bos)[[17]] <- "Finansiering og Forsikring"
-names(syssel_bos)[[18]] <- "Teknisk Tjenesteyting, Eiendomsdrift"
-names(syssel_bos)[[19]] <- "Forretningsmessig Tjenesteyting"
-names(syssel_bos)[[20]] <- "Off.Adm, Forsvar, Sosialforsikring"
-names(syssel_bos)[[21]] <- "Undervisning"
-names(syssel_bos)[[22]] <- "Helse- og Sosialtjenester"
-names(syssel_bos)[[23]] <- "Personlig Tjenesteyting"
-names(syssel_bos)[[24]] <- "Uoppgitt"
-```
-
-```{r}
-syssel_bos <- syssel_bos[syssel_bos$`Alle Næringer` !=0, ]
-```
-
-```{r}
-syssel_bos[1][(syssel_bos)[1] == "1211"] <- "4611"
-syssel_bos[1][(syssel_bos)[1] == "1216"] <- "4612"
-syssel_bos[1][(syssel_bos)[1] == "1219"] <- "4613"
-syssel_bos[1][(syssel_bos)[1] == "1221"] <- "4614"
-syssel_bos[1][(syssel_bos)[1] == "1222"] <- "4615"
-syssel_bos[1][(syssel_bos)[1] == "1223"] <- "4616"
-syssel_bos[1][(syssel_bos)[1] == "1224"] <- "4617"
-syssel_bos[1][(syssel_bos)[1] == "1231"] <- "4618"
+    old_knr = knr,
+    knr = case_when(
+      knr == "1211" ~ "4611",
+      knr == "1216" ~ "4612",
+      knr == "1219" ~ "4613",
+      knr == "1221" ~ "4614",
+      knr == "1222" ~ "4615",
+      knr == "1223" ~ "4616",
+      knr == "1224" ~ "4617",
+      knr == "1231" ~ "4618",
+      TRUE ~ as.character(knr)
+      )
+    ) %>% 
+  group_by(knr, aar, knavn, SN2007, NACE2007) %>% 
+  summarise(sysselsatte = sum(sysselsatte))
 ```
 
 ## Haugalandet, Sunnhordland & Hardanger
@@ -480,397 +443,716 @@ syssel_bos[1][(syssel_bos)[1] == "1231"] <- "4618"
 ### Haugalandet
 
 ```{r}
-hld_bos <- ApiData(
-  urlToData = "07984",
-  Region = list("vs:KommunerS", c(
-          "1106",
-          "1135",
-          "1145",
-          "1146",
-          "1149",
-          "1151",
-          "1160")),
-  ContentsCode = "Sysselsatte",
-  NACE2007 = TRUE,
-  Alder = "15-74",
-  Kjonn = "0",
-  Tid = c(
-    as.character(2008:2020)))
+hld_bos <- syssel_bos %>% 
+  filter(knr %in% c("1106", "1135", "1145", "1146", "1149", "1151", "1160")) %>% 
+  filter(SN2007 == "Alle næringer") %>% 
+  group_by(aar) %>% 
+  summarise(Totalt = sum(sysselsatte))
 ```
 
 ```{r}
-hld_bos <- hld_bos$dataset %>% 
-  tibble() %>% 
-  rename(
-    knr = Region,
-    aar = Tid
-) %>% 
-    mutate(knavn = hld_bos$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+hld_bos_LQ <- syssel_bos %>% 
+  filter(knr %in% c("1106", "1135", "1145", "1146", "1149", "1151", "1160")) %>%
+  # filteret under lett å endre skulle en ønske flere næringer
+  # Bruker offisielle betegnelser, kan event. endres
+  filter(SN2007 %in% c("Alle næringer", 
+                       "Jordbruk, skogbruk og fiske", 
+                       "Industri", 
+                       "Undervisning", 
+                       "Helse- og sosialtjenester"
+                       )
+         ) %>%
+  group_by(SN2007, knr, aar, knavn) %>% 
+  summarise(ansatte_naering = sum(sysselsatte))
+
+hld_tot_LQ <- hld_bos_LQ %>% 
+  group_by(aar, SN2007) %>% 
+  summarise(Total_Reg = sum(ansatte_naering)) 
+
 ```
 
 ```{r}
-hld_bos <- hld_bos %>% 
+# Merk at rekkefølgen på variablene blir forskjellig 
+hld_bos_LQ_wide <- hld_bos_LQ %>% 
   pivot_wider(
-    names_from = c(knr, knavn),
-    values_from = value)
+    id_cols = aar,
+    names_from = c(knavn, SN2007),
+    values_from = ansatte_naering
+  ) %>% 
+  select(aar, 
+         starts_with("Haugesund"), 
+         starts_with("Sauda"),
+         starts_with("Bokn"),
+         starts_with("Tysvær"),
+         starts_with("Karmøy"),
+         starts_with("Utsira"),
+         starts_with("Vindafjord")
+         )
+
+hld_tot_LQ_wide <- hld_tot_LQ %>% 
+    pivot_wider(
+    id_cols = aar,
+    names_from = SN2007,
+    values_from = Total_Reg
+  ) %>% 
+  rename_with(
+    .cols = `Alle næringer`:Undervisning,
+     ~ paste("Total_Reg", .x, sep = "_")
+  )
+
+hld_bos_LQ <- hld_bos_LQ_wide %>% 
+  left_join(hld_tot_LQ_wide, by = c("aar"))
+```
+
+Har sjekket at hld_bos_LQ ovenfor gir samme verdier som versjonen dere hadde. Har ikke sjekket sun_bos_LQ og har_bos_LQ.
+
+### Sunnhordland
+
+```{r}
+# Gir samme svar som koden under. Jeg vil påstå at min metode er enklere ;-)
+sun_bos <- syssel_bos %>% 
+  # Trenger bare nye knr siden det er de som nå ligger i knr
+  filter(knr %in% c("4611", "4612", "4613", "4614", "4615", "4616", "4617")) %>% 
+  filter(SN2007 == "Alle næringer") %>% 
+  group_by(aar) %>% 
+  summarise(Totalt = sum(sysselsatte))
 ```
 
 ```{r}
-hld_bos_LQ <- hld_bos
+sun_bos_LQ <- syssel_bos %>% 
+  filter(knr %in% c("4611", "4612", "4613", "4614", "4615", "4616", "4617")) %>% 
+  # filteret under lett å endre skulle en ønske flere næringer
+  # Bruker offisielle betegnelser, kan event. endres
+  filter(SN2007 %in% c("Alle næringer", 
+                       "Jordbruk, skogbruk og fiske", 
+                       "Industri", 
+                       "Undervisning", 
+                       "Helse- og sosialtjenester"
+                       )
+         ) %>%
+  group_by(SN2007, knr, aar, knavn) %>% 
+  summarise(ansatte_naering = sum(sysselsatte))
 
-names(hld_bos_LQ)[[6]] <- "Haugesund"
-names(hld_bos_LQ)[[7]] <- "Sauda"
-names(hld_bos_LQ)[[8]] <- "Bokn"
-names(hld_bos_LQ)[[9]] <- "Tysvær"
-names(hld_bos_LQ)[[10]] <- "Karmøy"
-names(hld_bos_LQ)[[11]] <- "Utsira"
-names(hld_bos_LQ)[[12]] <- "Vindafjord"
+sun_tot_LQ <- sun_bos_LQ %>% 
+  group_by(aar, SN2007) %>% 
+  summarise(Total_Reg = sum(ansatte_naering)) 
 
-hld_bos_LQ <- hld_bos_LQ %>% 
-  mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
+```
 
-hld_bos_LQ <- hld_bos_LQ %>% 
-  mutate(
-    NACE2007 = fct_recode(NACE2007,
-                     "Alle Næringer" = "00-99",
-                       "Primærnæring" = "01-03",
-                       "Industri" = "10-33",
-                       "Undervisning" = "85",
-                       "Helsetjenester" = "86-88")) 
-
-hld_bos_LQ <- hld_bos_LQ %>%
-  filter(NACE2007 %in% c("Alle Næringer", "Primærnæring", "Industri", "Undervisning", "Helsetjenester")) %>% 
+```{r}
+# Merk at rekkefølgen på variablene blir forskjellig 
+sun_bos_LQ_wide <- sun_bos_LQ %>% 
   pivot_wider(
-    names_from = NACE2007,
-    values_from = c("Haugesund", "Sauda", "Bokn", "Tysvær", "Karmøy", "Utsira", "Vindafjord")) %>% 
-  mutate(
-    Totalt_Reg_Næringer = `Haugesund_Alle Næringer` + `Sauda_Alle Næringer` + `Bokn_Alle Næringer` + `Tysvær_Alle Næringer` + `Karmøy_Alle Næringer` + `Utsira_Alle Næringer` + `Vindafjord_Alle Næringer`,
-    
-    Totalt_Reg_Industri = Haugesund_Industri + Sauda_Industri + Bokn_Industri + Tysvær_Industri + Karmøy_Industri + Utsira_Industri + Vindafjord_Industri,
+    id_cols = aar,
+    names_from = c(knavn, SN2007),
+    values_from = ansatte_naering
+  ) %>% 
+  select(aar, 
+         starts_with("Haugesund"), 
+         starts_with("Sauda"),
+         starts_with("Bokn"),
+         starts_with("Tysvær"),
+         starts_with("Karmøy"),
+         starts_with("Utsira"),
+         starts_with("Vindafjord")
+         )
 
-    Totalt_Reg_Primærnæring = `Haugesund_Primærnæring` + `Sauda_Primærnæring` + `Bokn_Primærnæring` + `Tysvær_Primærnæring` + `Karmøy_Primærnæring` + `Utsira_Primærnæring` + `Vindafjord_Primærnæring`,
+sun_tot_LQ_wide <- sun_tot_LQ %>% 
+    pivot_wider(
+    id_cols = aar,
+    names_from = SN2007,
+    values_from = Total_Reg
+  ) %>% 
+  rename_with(
+    .cols = `Alle næringer`:Undervisning,
+     ~ paste("Total_Reg", .x, sep = "_")
+  )
 
-    Totalt_Reg_Undervisning = Haugesund_Undervisning + Sauda_Undervisning + Bokn_Undervisning + Tysvær_Undervisning + Karmøy_Undervisning + Utsira_Undervisning + Vindafjord_Undervisning,
-    
-    Totalt_Reg_Helsetjenester = `Haugesund_Helsetjenester` + `Sauda_Helsetjenester` + `Bokn_Helsetjenester` + `Tysvær_Helsetjenester` + `Karmøy_Helsetjenester` + `Utsira_Helsetjenester` + `Vindafjord_Helsetjenester`)
+sun_bos_LQ <- sun_bos_LQ_wide %>% 
+  left_join(hld_tot_LQ_wide, by = c("aar"))
+```
+
+
+### Hardanger
+
+```{r}
+# Gir samme svar som koden under. Jeg vil påstå at min metode er enklere ;-)
+har_bos <- syssel_bos %>% 
+  # Trenger bare nye knr siden det er de som nå ligger i knr
+  filter(knr %in% c("1228", "1231", "4618")) %>% 
+  filter(SN2007 == "Alle næringer") %>% 
+  group_by(aar) %>% 
+  summarise(Totalt = sum(sysselsatte))
 ```
 
 ```{r}
-hld_bos <- hld_bos %>% 
-  filter(NACE2007 %in% c("00-99", "10-33", "01-03", "85", "86-88")) 
+har_bos_LQ <- syssel_bos %>% 
+  filter(knr %in% c("1228", "1231", "4618")) %>% 
+  # filteret under lett å endre skulle en ønske flere næringer
+  # Bruker offisielle betegnelser, kan event. endres
+  filter(SN2007 %in% c("Alle næringer", 
+                       "Jordbruk, skogbruk og fiske", 
+                       "Industri", 
+                       "Undervisning", 
+                       "Helse- og sosialtjenester"
+                       )
+         ) %>%
+  group_by(SN2007, knr, aar, knavn) %>% 
+  summarise(ansatte_naering = sum(sysselsatte))
+
+har_tot_LQ <- har_bos_LQ %>% 
+  group_by(aar, SN2007) %>% 
+  summarise(Total_Reg = sum(ansatte_naering)) 
+
+```
+
+```{r}
+# Merk at rekkefølgen på variablene blir forskjellig 
+har_bos_LQ_wide <- har_bos_LQ %>% 
+  pivot_wider(
+    id_cols = aar,
+    names_from = c(knavn, SN2007),
+    values_from = ansatte_naering
+  ) %>% 
+  select(aar, 
+         starts_with("Haugesund"), 
+         starts_with("Sauda"),
+         starts_with("Bokn"),
+         starts_with("Tysvær"),
+         starts_with("Karmøy"),
+         starts_with("Utsira"),
+         starts_with("Vindafjord")
+         )
+
+har_tot_LQ_wide <- har_tot_LQ %>% 
+    pivot_wider(
+    id_cols = aar,
+    names_from = SN2007,
+    values_from = Total_Reg
+  ) %>% 
+  rename_with(
+    .cols = `Alle næringer`:Undervisning,
+     ~ paste("Total_Reg", .x, sep = "_")
+  )
+
+har_bos_LQ <- har_bos_LQ_wide %>% 
+  left_join(hld_tot_LQ_wide, by = c("aar"))
+```
+
+
+## Orginal kode
+
+```{r}
+# Henter her inn data via API og inkluderer alle kommunenumre
+# syssel_bos <- ApiData(
+#   urlToData = "07984",
+#   Region = list("vs:KommunerS", c(
+#           "1106",
+#           "1135",
+#           "1145",
+#           "1146",
+#           "1149",
+#           "1151",
+#           "1160",
+#           "4611",
+#           "4612",
+#           "4613",
+#           "4614",
+#           "4615",
+#           "4616",
+#           "4617",
+#           "4618",
+#           "1211",
+#           "1216",
+#           "1219",
+#           "1221",
+#           "1222",
+#           "1223",
+#           "1224",
+#           "1227",
+#           "1228",
+#           "1231")),
+#   ContentsCode = "Sysselsatte",
+#   NACE2007 = TRUE,
+#   Alder = "15-74",
+#   Kjonn = "0",
+#   Tid = c(
+#     as.character(2008:2020)))
+```
+
+```{r}
+# syssel_bos <- syssel_bos$dataset %>% 
+#   tibble() %>% 
+#   rename(
+#     knr = Region,
+#     aar = Tid
+# ) %>% 
+#     mutate(knavn = syssel_bos$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+```
+
+```{r}
+# syssel_bos <- syssel_bos %>% 
+#   pivot_wider(
+#     names_from = NACE2007,
+#     values_from = value)
+```
+
+```{r}
+# names(syssel_bos)[[1]] <- "knr"
+```
+
+```{r}
+# syssel_bos <- syssel_bos %>%
+#   filter(
+#     knr %in% c(1106, 1135, 1145, 1146, 1149, 1151, 1160, 1211, 4611, 1216, 4612, 1219, 4613, 1221, 4614, 1222, 4615, 1223, 4616, 1224, 4617, 1228, 1231, 4618))
+```
+
+```{r}
+# syssel_bos <- syssel_bos %>% 
+#   mutate(
+#     knavn = str_replace(knavn, moenster, ""))
+```
+
+```{r}
+# syssel_bos <- syssel_bos %>% 
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+```
+
+```{r}
+# names(syssel_bos)[[7]] <- "Alle Næringer"
+# names(syssel_bos)[[8]] <- "Jordbruk, Skogbrug og Fiske"
+# names(syssel_bos)[[9]] <- "Bergverksdrift og Utvinning"
+# names(syssel_bos)[[10]] <- "Industri"
+# names(syssel_bos)[[11]] <- "Elektrisitet, Vann og Renovasjon"
+# names(syssel_bos)[[12]] <- "Bygge- og Anleggsvirksomhet"
+# names(syssel_bos)[[13]] <- "Varehandel, Reperasjon av Motorvogner"
+# names(syssel_bos)[[14]] <- "Transport og Lagring"
+# names(syssel_bos)[[15]] <- "Overnattings- og Servicevirksomhet"
+# names(syssel_bos)[[16]] <- "Informasjon og Kommunikasjon"
+# names(syssel_bos)[[17]] <- "Finansiering og Forsikring"
+# names(syssel_bos)[[18]] <- "Teknisk Tjenesteyting, Eiendomsdrift"
+# names(syssel_bos)[[19]] <- "Forretningsmessig Tjenesteyting"
+# names(syssel_bos)[[20]] <- "Off.Adm, Forsvar, Sosialforsikring"
+# names(syssel_bos)[[21]] <- "Undervisning"
+# names(syssel_bos)[[22]] <- "Helse- og Sosialtjenester"
+# names(syssel_bos)[[23]] <- "Personlig Tjenesteyting"
+# names(syssel_bos)[[24]] <- "Uoppgitt"
+```
+
+```{r}
+# Denne ga error derfor kommentert ut
+#syssel_bos <- syssel_bos[syssel_bos$`Alle Næringer` !=0, ]
+```
+
+```{r}
+# syssel_bos[1][(syssel_bos)[1] == "1211"] <- "4611"
+# syssel_bos[1][(syssel_bos)[1] == "1216"] <- "4612"
+# syssel_bos[1][(syssel_bos)[1] == "1219"] <- "4613"
+# syssel_bos[1][(syssel_bos)[1] == "1221"] <- "4614"
+# syssel_bos[1][(syssel_bos)[1] == "1222"] <- "4615"
+# syssel_bos[1][(syssel_bos)[1] == "1223"] <- "4616"
+# syssel_bos[1][(syssel_bos)[1] == "1224"] <- "4617"
+# syssel_bos[1][(syssel_bos)[1] == "1231"] <- "4618"
+```
+
+## Haugalandet, Sunnhordland & Hardanger
+
+### Haugalandet
+
+```{r}
+# hld_bos <- ApiData(
+#   urlToData = "07984",
+#   Region = list("vs:KommunerS", c(
+#           "1106",
+#           "1135",
+#           "1145",
+#           "1146",
+#           "1149",
+#           "1151",
+#           "1160")),
+#   ContentsCode = "Sysselsatte",
+#   NACE2007 = TRUE,
+#   Alder = "15-74",
+#   Kjonn = "0",
+#   Tid = c(
+#     as.character(2008:2020)))
+```
+
+```{r}
+# hld_bos <- hld_bos$dataset %>%
+#   tibble() %>%
+#   rename(
+#     knr = Region,
+#     aar = Tid
+# ) %>%
+#     mutate(knavn = hld_bos$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+```
+
+```{r}
+# #hld_bos er antall personer bosatt i en kommune som jobber i de ulike næringene
+# hld_bos <- hld_bos %>%
+#   pivot_wider(
+#     names_from = c(knr, knavn),
+#     values_from = value)
+```
+
+```{r}
+# hld_bos_LQ <- hld_bos
+# 
+# names(hld_bos_LQ)[[6]] <- "Haugesund"
+# names(hld_bos_LQ)[[7]] <- "Sauda"
+# names(hld_bos_LQ)[[8]] <- "Bokn"
+# names(hld_bos_LQ)[[9]] <- "Tysvær"
+# names(hld_bos_LQ)[[10]] <- "Karmøy"
+# names(hld_bos_LQ)[[11]] <- "Utsira"
+# names(hld_bos_LQ)[[12]] <- "Vindafjord"
+# 
+# hld_bos_LQ <- hld_bos_LQ %>%
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+# 
+# hld_bos_LQ <- hld_bos_LQ %>%
+#   mutate(
+#     NACE2007 = fct_recode(NACE2007,
+#                      "Alle Næringer" = "00-99",
+#                        "Primærnæring" = "01-03",
+#                        "Industri" = "10-33",
+#                        "Undervisning" = "85",
+#                        "Helsetjenester" = "86-88"))
+# 
+# hld_bos_LQ <- hld_bos_LQ %>%
+#   filter(NACE2007 %in% c("Alle Næringer", "Primærnæring", "Industri", "Undervisning", "Helsetjenester")) %>%
+#   pivot_wider(
+#     names_from = NACE2007,
+#     values_from = c("Haugesund", "Sauda", "Bokn", "Tysvær", "Karmøy", "Utsira", "Vindafjord")) %>%
+#   mutate(
+#     Totalt_Reg_Næringer = `Haugesund_Alle Næringer` + `Sauda_Alle Næringer` + `Bokn_Alle Næringer` + `Tysvær_Alle Næringer` + `Karmøy_Alle Næringer` + `Utsira_Alle Næringer` + `Vindafjord_Alle Næringer`,
+# 
+#     Totalt_Reg_Industri = Haugesund_Industri + Sauda_Industri + Bokn_Industri + Tysvær_Industri + Karmøy_Industri + Utsira_Industri + Vindafjord_Industri,
+# 
+#     Totalt_Reg_Primærnæring = `Haugesund_Primærnæring` + `Sauda_Primærnæring` + `Bokn_Primærnæring` + `Tysvær_Primærnæring` + `Karmøy_Primærnæring` + `Utsira_Primærnæring` + `Vindafjord_Primærnæring`,
+# 
+#     Totalt_Reg_Undervisning = Haugesund_Undervisning + Sauda_Undervisning + Bokn_Undervisning + Tysvær_Undervisning + Karmøy_Undervisning + Utsira_Undervisning + Vindafjord_Undervisning,
+# 
+#     Totalt_Reg_Helsetjenester = `Haugesund_Helsetjenester` + `Sauda_Helsetjenester` + `Bokn_Helsetjenester` + `Tysvær_Helsetjenester` + `Karmøy_Helsetjenester` + `Utsira_Helsetjenester` + `Vindafjord_Helsetjenester`)
+```
+
+```{r}
+# hld_bos <- hld_bos %>%
+#   filter(NACE2007 %in% c("00-99", "10-33", "01-03", "85", "86-88"))
 ```
 
 
 ```{r}
-hld_bos <- hld_bos %>% 
-  mutate(
-    Totalt = `1106_Haugesund` + `1135_Sauda` + `1145_Bokn` + `1146_Tysvær` + `1149_Karmøy` + `1151_Utsira` + `1160_Vindafjord`) %>% 
-  select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
+# hld_bos <- hld_bos %>%
+#   mutate(
+#     Totalt = `1106_Haugesund` + `1135_Sauda` + `1145_Bokn` + `1146_Tysvær` + `1149_Karmøy` + `1151_Utsira` + `1160_Vindafjord`) %>%
+#   select(NACE2007, Kjonn, Alder, ContentsCode, aar, Totalt)
 ```
 
 ```{r}
-hld_bos <- hld_bos %>% 
-  mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
-
-hld_bos <- hld_bos %>% 
-  mutate(
-    NACE2007 = fct_recode(NACE2007,
-                     "Alle Næringer" = "00-99",
-                       "Jordbruk, Skogbruk og Fiske" = "01-03",
-                       "Industri" = "10-33",
-                       "Undervisning" = "85",
-                       "Helse- og Sosialtjenester" = "86-88")) 
+# hld_bos <- hld_bos %>%
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+# 
+# hld_bos <- hld_bos %>%
+#   mutate(
+#     NACE2007 = fct_recode(NACE2007,
+#                      "Alle Næringer" = "00-99",
+#                        "Jordbruk, Skogbruk og Fiske" = "01-03",
+#                        "Industri" = "10-33",
+#                        "Undervisning" = "85",
+#                        "Helse- og Sosialtjenester" = "86-88"))
 ```
 
 ```{r}
-names(hld_bos)[[1]] <- "Næringer"
-names(hld_bos)[[5]] <- "År"
+# names(hld_bos)[[1]] <- "Næringer"
+# names(hld_bos)[[5]] <- "År"
 ```
 
 ```{r}
-hld_bos <- hld_bos %>% 
-  filter(Næringer == 'Alle Næringer')
+# hld_bos <- hld_bos %>%
+#   filter(Næringer == 'Alle Næringer')
 ```
-
 
 
 ### Sunnhordland
 
 ```{r}
-sun_bos <- ApiData(
-  urlToData = "07984",
-  Region = list("vs:KommunerS", c(
-          "1211",
-          "1216",
-          "1219",
-          "1221",
-          "1222",
-          "1223",
-          "1224",
-          "4611",
-          "4612",
-          "4613",
-          "4614",
-          "4615",
-          "4616",
-          "4617")),
-  ContentsCode = "Sysselsatte",
-  NACE2007 = TRUE,
-  Alder = "15-74",
-  Kjonn = "0",
-  Tid = c(
-    as.character(2008:2020)))
+# sun_bos <- ApiData(
+#   urlToData = "07984",
+#   Region = list("vs:KommunerS", c(
+#           "1211",
+#           "1216",
+#           "1219",
+#           "1221",
+#           "1222",
+#           "1223",
+#           "1224",
+#           "4611",
+#           "4612",
+#           "4613",
+#           "4614",
+#           "4615",
+#           "4616",
+#           "4617")),
+#   ContentsCode = "Sysselsatte",
+#   NACE2007 = TRUE,
+#   Alder = "15-74",
+#   Kjonn = "0",
+#   Tid = c(
+#     as.character(2008:2020)))
 ```
 
 ```{r}
-sun_bos <- sun_bos$dataset %>% 
-  tibble() %>% 
-  rename(
-    knr = Region,
-    aar = Tid
-) %>% 
-    mutate(knavn = sun_bos$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+# sun_bos <- sun_bos$dataset %>% 
+#   tibble() %>% 
+#   rename(
+#     knr = Region,
+#     aar = Tid
+# ) %>% 
+#     mutate(knavn = sun_bos$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
 ```
 
 ```{r}
-sun_bos <- sun_bos %>% 
-  pivot_wider(
-    names_from = c(knr, knavn),
-    values_from = value)
+# sun_bos <- sun_bos %>% 
+#   pivot_wider(
+#     names_from = c(knr, knavn),
+#     values_from = value)
 ```
 
 
 ```{r}
-sun_bos <- sun_bos %>% 
-  mutate(
-    Etne = `4611_Etne` + `1211_Etne (-2019)`,
-    Sveio = `4612_Sveio` + `1216_Sveio (-2019)`,
-    Bømlo = `4613_Bømlo` + `1219_Bømlo (1916-2019)`,
-    Stord = `4614_Stord` + `1221_Stord (-2019)`,
-    Fitjar = `4615_Fitjar` + `1222_Fitjar (-2019)`,
-    Tysnes = `4616_Tysnes` + `1223_Tysnes (-2019)`,
-    Kvinnherad = `4617_Kvinnherad` + `1224_Kvinnherad (-2019)`) %>% 
-  select(NACE2007, Kjonn, Alder, ContentsCode, aar, Etne, Sveio, Bømlo, Stord, Fitjar, Tysnes, Kvinnherad)
+# sun_bos <- sun_bos %>% 
+#   mutate(
+#     Etne = `4611_Etne` + `1211_Etne (-2019)`,
+#     Sveio = `4612_Sveio` + `1216_Sveio (-2019)`,
+#     Bømlo = `4613_Bømlo` + `1219_Bømlo (1916-2019)`,
+#     Stord = `4614_Stord` + `1221_Stord (-2019)`,
+#     Fitjar = `4615_Fitjar` + `1222_Fitjar (-2019)`,
+#     Tysnes = `4616_Tysnes` + `1223_Tysnes (-2019)`,
+#     Kvinnherad = `4617_Kvinnherad` + `1224_Kvinnherad (-2019)`) %>% 
+#   select(NACE2007, Kjonn, Alder, ContentsCode, aar, Etne, Sveio, Bømlo, Stord, Fitjar, Tysnes, Kvinnherad)
 ```
 
 ```{r}
-sun_bos_LQ <- sun_bos
-
-names(sun_bos_LQ)[[6]] <- "Etne"
-names(sun_bos_LQ)[[7]] <- "Sveio"
-names(sun_bos_LQ)[[8]] <- "Bømlo"
-names(sun_bos_LQ)[[9]] <- "Stord"
-names(sun_bos_LQ)[[10]] <- "Fitjar"
-names(sun_bos_LQ)[[11]] <- "Tysnes"
-names(sun_bos_LQ)[[12]] <- "Kvinnherad"
-
-sun_bos_LQ <- sun_bos_LQ %>% 
-  mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
-
-sun_bos_LQ <- sun_bos_LQ %>% 
-  mutate(
-    NACE2007 = fct_recode(NACE2007,
-                     "Alle Næringer" = "00-99",
-                       "Primærnæring" = "01-03",
-                       "Industri" = "10-33",
-                       "Undervisning" = "85",
-                       "Helsetjenester" = "86-88")) 
-
-sun_bos_LQ <- sun_bos_LQ %>%
-  filter(NACE2007 %in% c("Alle Næringer", "Primærnæring", "Industri", "Undervisning", "Helsetjenester")) %>% 
-  pivot_wider(
-    names_from = NACE2007,
-    values_from = c("Etne", "Sveio", "Bømlo", "Stord", "Fitjar", "Tysnes", "Kvinnherad")) %>% 
-  mutate(
-    Totalt_Reg_Næringer = `Etne_Alle Næringer` + `Sveio_Alle Næringer` + `Bømlo_Alle Næringer` + `Stord_Alle Næringer` + `Fitjar_Alle Næringer` + `Tysnes_Alle Næringer` + `Kvinnherad_Alle Næringer`,
-    
-    Totalt_Reg_Industri = Etne_Industri + Sveio_Industri + Bømlo_Industri + Stord_Industri + Fitjar_Industri + Tysnes_Industri + Kvinnherad_Industri,
-
-    Totalt_Reg_Primærnæring = `Etne_Primærnæring` + `Sveio_Primærnæring` + `Bømlo_Primærnæring` + `Stord_Primærnæring` + `Fitjar_Primærnæring` + `Tysnes_Primærnæring` + `Kvinnherad_Primærnæring`,
-
-    Totalt_Reg_Undervisning = Etne_Undervisning + Sveio_Undervisning + Bømlo_Undervisning + Stord_Undervisning + Fitjar_Undervisning + Tysnes_Undervisning + Kvinnherad_Undervisning,
-    
-    Totalt_Reg_Helsetjenester = `Etne_Helsetjenester` + `Sveio_Helsetjenester` + `Bømlo_Helsetjenester` + `Stord_Helsetjenester` + `Fitjar_Helsetjenester` + `Tysnes_Helsetjenester` + `Kvinnherad_Helsetjenester`)
+# sun_bos_LQ <- sun_bos
+# 
+# names(sun_bos_LQ)[[6]] <- "Etne"
+# names(sun_bos_LQ)[[7]] <- "Sveio"
+# names(sun_bos_LQ)[[8]] <- "Bømlo"
+# names(sun_bos_LQ)[[9]] <- "Stord"
+# names(sun_bos_LQ)[[10]] <- "Fitjar"
+# names(sun_bos_LQ)[[11]] <- "Tysnes"
+# names(sun_bos_LQ)[[12]] <- "Kvinnherad"
+# 
+# sun_bos_LQ <- sun_bos_LQ %>% 
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+# 
+# sun_bos_LQ <- sun_bos_LQ %>% 
+#   mutate(
+#     NACE2007 = fct_recode(NACE2007,
+#                      "Alle Næringer" = "00-99",
+#                        "Primærnæring" = "01-03",
+#                        "Industri" = "10-33",
+#                        "Undervisning" = "85",
+#                        "Helsetjenester" = "86-88")) 
+# 
+# sun_bos_LQ <- sun_bos_LQ %>%
+#   filter(NACE2007 %in% c("Alle Næringer", "Primærnæring", "Industri", "Undervisning", "Helsetjenester")) %>% 
+#   pivot_wider(
+#     names_from = NACE2007,
+#     values_from = c("Etne", "Sveio", "Bømlo", "Stord", "Fitjar", "Tysnes", "Kvinnherad")) %>% 
+#   mutate(
+#     Totalt_Reg_Næringer = `Etne_Alle Næringer` + `Sveio_Alle Næringer` + `Bømlo_Alle Næringer` + `Stord_Alle Næringer` + `Fitjar_Alle Næringer` + `Tysnes_Alle Næringer` + `Kvinnherad_Alle Næringer`,
+#     
+#     Totalt_Reg_Industri = Etne_Industri + Sveio_Industri + Bømlo_Industri + Stord_Industri + Fitjar_Industri + Tysnes_Industri + Kvinnherad_Industri,
+# 
+#     Totalt_Reg_Primærnæring = `Etne_Primærnæring` + `Sveio_Primærnæring` + `Bømlo_Primærnæring` + `Stord_Primærnæring` + `Fitjar_Primærnæring` + `Tysnes_Primærnæring` + `Kvinnherad_Primærnæring`,
+# 
+#     Totalt_Reg_Undervisning = Etne_Undervisning + Sveio_Undervisning + Bømlo_Undervisning + Stord_Undervisning + Fitjar_Undervisning + Tysnes_Undervisning + Kvinnherad_Undervisning,
+#     
+#     Totalt_Reg_Helsetjenester = `Etne_Helsetjenester` + `Sveio_Helsetjenester` + `Bømlo_Helsetjenester` + `Stord_Helsetjenester` + `Fitjar_Helsetjenester` + `Tysnes_Helsetjenester` + `Kvinnherad_Helsetjenester`)
 ```
 
 ```{r}
-sun_bos <- sun_bos %>% 
-  filter(NACE2007 %in% c("00-99", "10-33", "01-03", "85", "86-88")) 
+# sun_bos <- sun_bos %>% 
+#   filter(NACE2007 %in% c("00-99", "10-33", "01-03", "85", "86-88")) 
 ```
 
 ```{r}
-sun_bos <- sun_bos %>% 
-  mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
-
-sun_bos <- sun_bos %>% 
-  mutate(
-    NACE2007 = fct_recode(NACE2007,
-                          "Alle Næringer" = "00-99",
-                          "Jordbruk, Skogbruk og Fiske" = "01-03",
-                          "Industri" = "10-33",
-                          "Undervisning" = "85",
-                          "Helse- og Sosialtjenester" = "86-88")) 
+# sun_bos <- sun_bos %>% 
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+# 
+# sun_bos <- sun_bos %>% 
+#   mutate(
+#     NACE2007 = fct_recode(NACE2007,
+#                           "Alle Næringer" = "00-99",
+#                           "Jordbruk, Skogbruk og Fiske" = "01-03",
+#                           "Industri" = "10-33",
+#                           "Undervisning" = "85",
+#                           "Helse- og Sosialtjenester" = "86-88")) 
 ```
 
 ```{r}
-names(sun_bos)[[1]] <- "Næringer"
-names(sun_bos)[[5]] <- "År"
+# names(sun_bos)[[1]] <- "Næringer"
+# names(sun_bos)[[5]] <- "År"
 ```
 
 ```{r}
-sun_bos <- sun_bos %>% 
-  filter(Næringer == 'Alle Næringer')
+# sun_bos <- sun_bos %>% 
+#   filter(Næringer == 'Alle Næringer')
 ```
 
 ```{r}
-sun_bos <- sun_bos %>% 
-  mutate(
-    Totalt = Etne + Sveio + Bømlo + Stord + Fitjar + Tysnes + Kvinnherad
-) %>% 
-  select(
-    Næringer, Kjonn, Alder, ContentsCode, År, Totalt)
+# sun_bos <- sun_bos %>% 
+#   mutate(
+#     Totalt = Etne + Sveio + Bømlo + Stord + Fitjar + Tysnes + Kvinnherad
+# ) %>% 
+#   select(
+#     Næringer, Kjonn, Alder, ContentsCode, År, Totalt)
 ```
 
 ### Hardanger
 
 ```{r}
-har_bos <- ApiData(
-  urlToData = "07984",
-  Region = list("vs:KommunerS", c(
-          "1228",
-          "1231",
-          "4618")),
-  ContentsCode = "Sysselsatte",
-  NACE2007 = TRUE,
-  Alder = "15-74",
-  Kjonn = "0",
-  Tid = c(
-    as.character(2008:2020)))
+# har_bos <- ApiData(
+#   urlToData = "07984",
+#   Region = list("vs:KommunerS", c(
+#           "1228",
+#           "1231",
+#           "4618")),
+#   ContentsCode = "Sysselsatte",
+#   NACE2007 = TRUE,
+#   Alder = "15-74",
+#   Kjonn = "0",
+#   Tid = c(
+#     as.character(2008:2020)))
+# ```
+# 
+# ```{r}
+# har_bos <- har_bos$dataset %>% 
+#   tibble() %>% 
+#   rename(
+#     knr = Region,
+#     aar = Tid
+# ) %>% 
+#     mutate(knavn = har_bos$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
 ```
 
 ```{r}
-har_bos <- har_bos$dataset %>% 
-  tibble() %>% 
-  rename(
-    knr = Region,
-    aar = Tid
-) %>% 
-    mutate(knavn = har_bos$`07984: Sysselsatte per 4. kvartal, etter region, næring (SN2007), kjønn, alder, statistikkvariabel og år`$region)
+# har_bos <- har_bos %>% 
+#   pivot_wider(
+#     names_from = c(knr, knavn),
+#     values_from = value)
 ```
 
 ```{r}
-har_bos <- har_bos %>% 
-  pivot_wider(
-    names_from = c(knr, knavn),
-    values_from = value)
+# har_bos <- har_bos %>% 
+#   mutate(
+#     Ullensvang = `1231_Ullensvang (1977-2019)` + `4618_Ullensvang`,
+#     Totalt = `1228_Odda (1913-2019)` + Ullensvang) %>% 
+#   select(NACE2007, Kjonn, Alder, ContentsCode, aar, `1228_Odda (1913-2019)`, Ullensvang)
 ```
 
 ```{r}
-har_bos <- har_bos %>% 
-  mutate(
-    Ullensvang = `1231_Ullensvang (1977-2019)` + `4618_Ullensvang`,
-    Totalt = `1228_Odda (1913-2019)` + Ullensvang) %>% 
-  select(NACE2007, Kjonn, Alder, ContentsCode, aar, `1228_Odda (1913-2019)`, Ullensvang)
-```
-
-```{r}
-har_bos_LQ <- har_bos
-
-names(har_bos_LQ)[[6]] <- "Odda(-2019)"
-names(har_bos_LQ)[[7]] <- "Ullensvang"
-
-har_bos_LQ <- har_bos_LQ %>% 
-  mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
-
-har_bos_LQ <- har_bos_LQ %>% 
-  mutate(
-    NACE2007 = fct_recode(NACE2007,
-                     "Alle Næringer" = "00-99",
-                       "Primærnæring" = "01-03",
-                       "Industri" = "10-33",
-                       "Undervisning" = "85",
-                       "Helsetjenester" = "86-88")) 
-
-har_bos_LQ <- har_bos_LQ %>%
-  filter(NACE2007 %in% c("Alle Næringer", "Primærnæring", "Industri", "Undervisning", "Helsetjenester")) %>% 
-  pivot_wider(
-    names_from = NACE2007,
-    values_from = c("Odda(-2019)", "Ullensvang")) %>% 
-  mutate(
-    Totalt_Reg_Næringer = `Odda(-2019)_Alle Næringer` + `Ullensvang_Alle Næringer`,
-    
-    Totalt_Reg_Industri = `Odda(-2019)_Industri` + Ullensvang_Industri,
-
-    Totalt_Reg_Primærnæring = `Odda(-2019)_Primærnæring` + `Ullensvang_Primærnæring`,
-
-    Totalt_Reg_Undervisning = `Odda(-2019)_Undervisning` + `Ullensvang_Undervisning`,
-    
-    Totalt_Reg_Helsetjenester = `Odda(-2019)_Helsetjenester` + `Ullensvang_Helsetjenester`)
+# har_bos_LQ <- har_bos
+# 
+# names(har_bos_LQ)[[6]] <- "Odda(-2019)"
+# names(har_bos_LQ)[[7]] <- "Ullensvang"
+# 
+# har_bos_LQ <- har_bos_LQ %>% 
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+# 
+# har_bos_LQ <- har_bos_LQ %>% 
+#   mutate(
+#     NACE2007 = fct_recode(NACE2007,
+#                      "Alle Næringer" = "00-99",
+#                        "Primærnæring" = "01-03",
+#                        "Industri" = "10-33",
+#                        "Undervisning" = "85",
+#                        "Helsetjenester" = "86-88")) 
+# 
+# har_bos_LQ <- har_bos_LQ %>%
+#   filter(NACE2007 %in% c("Alle Næringer", "Primærnæring", "Industri", "Undervisning", "Helsetjenester")) %>% 
+#   pivot_wider(
+#     names_from = NACE2007,
+#     values_from = c("Odda(-2019)", "Ullensvang")) %>% 
+#   mutate(
+#     Totalt_Reg_Næringer = `Odda(-2019)_Alle Næringer` + `Ullensvang_Alle Næringer`,
+#     
+#     Totalt_Reg_Industri = `Odda(-2019)_Industri` + Ullensvang_Industri,
+# 
+#     Totalt_Reg_Primærnæring = `Odda(-2019)_Primærnæring` + `Ullensvang_Primærnæring`,
+# 
+#     Totalt_Reg_Undervisning = `Odda(-2019)_Undervisning` + `Ullensvang_Undervisning`,
+#     
+#     Totalt_Reg_Helsetjenester = `Odda(-2019)_Helsetjenester` + `Ullensvang_Helsetjenester`)
 ```
 
 
 ```{r}
-har_bos <- har_bos %>% 
-  filter(NACE2007 %in% c("00-99", "10-33", "01-03", "85", "86-88"))
+# har_bos <- har_bos %>% 
+#   filter(NACE2007 %in% c("00-99", "10-33", "01-03", "85", "86-88"))
 ```
 
 
 
 ```{r}
-har_bos <- har_bos %>% 
-  mutate(
-    Kjonn = fct_recode(Kjonn,
-                     "Begge Kjønn" = "0"))
-
-har_bos <- har_bos %>% 
-  mutate(
-    NACE2007 = fct_recode(NACE2007,
-                     "Alle Næringer" = "00-99",
-                          "Jordbruk, Skogbruk og Fiske" = "01-03",
-                          "Industri" = "10-33",
-                          "Undervisning" = "85",
-                          "Helse- og Sosialtjenester" = "86-88"))
+# har_bos <- har_bos %>% 
+#   mutate(
+#     Kjonn = fct_recode(Kjonn,
+#                      "Begge Kjønn" = "0"))
+# 
+# har_bos <- har_bos %>% 
+#   mutate(
+#     NACE2007 = fct_recode(NACE2007,
+#                      "Alle Næringer" = "00-99",
+#                           "Jordbruk, Skogbruk og Fiske" = "01-03",
+#                           "Industri" = "10-33",
+#                           "Undervisning" = "85",
+#                           "Helse- og Sosialtjenester" = "86-88"))
 ```
 
 ```{r}
-names(har_bos)[[1]] <- "Næringer"
-names(har_bos)[[5]] <- "År"
+# names(har_bos)[[1]] <- "Næringer"
+# names(har_bos)[[5]] <- "År"
 ```
 
 ```{r}
-har_bos <- har_bos %>% 
-  filter(Næringer == 'Alle Næringer')
+# har_bos <- har_bos %>% 
+#   filter(Næringer == 'Alle Næringer')
 ```
 
 ```{r}
-names(har_bos)[[6]] <- "Odda"
+# names(har_bos)[[6]] <- "Odda"
 ```
 
 ```{r}
-har_bos <- har_bos %>% 
-  mutate(
-    Totalt = Odda + Ullensvang)
+# har_bos <- har_bos %>% 
+#   mutate(
+#     Totalt = Odda + Ullensvang)
 ```
 
 ```{r}
-har_bos <- har_bos %>% 
-  pivot_wider(names_from = Næringer,
-              values_from = Totalt)
+# har_bos <- har_bos %>% 
+#   pivot_wider(names_from = Næringer,
+#               values_from = Totalt)
 ```
 
 ```{r}
-har_bos <- har_bos %>% 
-  select(-Odda, -Ullensvang)
+# har_bos <- har_bos %>% 
+#   select(-Odda, -Ullensvang)
 ```
 
 
@@ -940,12 +1222,10 @@ hgl_Pendling_raw <- ApiData(
                 ),
   Tid = "2020"
   )
-
 ```
 
 ```{r}
 names(hgl_Pendling_raw)[[1]] <- "desc"
-
 ```
 
 ```{r}
@@ -983,12 +1263,10 @@ sun_Pendling_raw <- ApiData(
                 ),
   Tid = "2020"
   )
-
 ```
 
 ```{r}
 names(sun_Pendling_raw)[[1]] <- "desc"
-
 ```
 
 ```{r}
@@ -1032,4 +1310,7 @@ write_csv(hgl_Pendling, file = "hgl_Pendling.csv")
 write_csv(sun_Pendling, file = "sun_Pendling.csv")
 ```
 
--
+```{r, echo = FALSE}
+#siste
+```
+
